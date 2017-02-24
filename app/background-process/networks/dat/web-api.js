@@ -51,30 +51,24 @@ export default {
     return dat.forkArchive(url, {title, description, createdBy})
   },
 
-  // TODO move into the library
-  // deleteArchive: m(function * (url) {
-  //   var { archive } = lookupArchive(url)
-  //   var archiveKey = archive.key.toString('hex')
+  async loadArchive(url) {
+    if (!url || typeof url !== 'string') {
+      return Promise.reject(new InvalidURLError())
+    }
+    dat.loadArchive(url)
+    return Promise.resolve(true)
+  },
 
-  //   // get the archive meta
-  //   var details = await dat.getArchiveDetails(archiveKey)
-  //   var oldSettings = details.userSettings
+  async getInfo(url, opts = {}) {
+    return dat.getArchiveInfo(url, opts)
+  },
 
-  //   // fail if this site isnt saved
-  //   if (!details.userSettings.isSaved) {
-  //     throw new ArchiveNotSavedError()
-  //   }
-
-  //   // ask the user
-  //   var decision = await requestPermission('deleteDat:' + archiveKey, this.sender, { title: details.title })
-  //   if (decision === false) throw new UserDeniedError()
-
-  //   // delete
-  //   await archivesDb.setArchiveUserSettings(archive.key, {isSaved: false})
-  // },
+  async updateManifest(url, manifest) {
+    var { archive, filepath } = lookupArchive(url)
+    return pda.updateManifest(archive, updates)
+  },
 
   async stat(url, opts = {}) {
-    // TODO versions
     var { archive, filepath } = lookupArchive(url)
     var downloadedBlocks = opts.downloadedBlocks === true
     var entry = await pda.lookupEntry(archive, filepath, opts)
@@ -88,7 +82,6 @@ export default {
   },
 
   async readFile(url, opts = {}) {
-    // TODO versions
     var { archive, filepath } = lookupArchive(url)
     return pda.readFile(archive, filepath, opts)
   },
@@ -106,12 +99,15 @@ export default {
   },
 
   async deleteFile(url) {
-    // var { archive, filepath } = lookupArchive(url)
     throw new Error('not yet implemented') // TODO
   },
 
+  async download(url, opts) {
+    var { archive, filepath } = lookupArchive(url)
+    return pda.download(archive, filepath, opts)
+  },
+
   async readDirectory(url, opts = {}) {
-    // TODO history
     var { archive, filepath } = lookupArchive(url)
     return pda.listFiles(archive, filepath, opts)
   },
@@ -127,7 +123,41 @@ export default {
   },
 
   async deleteDirectory(url) {
-    // var { archive, filepath } = lookupArchive(url)
+    throw new Error('not yet implemented') // TODO
+  },
+
+  createFileActivityStream(opts) {
+    throw new Error('not yet implemented') // TODO
+  },
+
+  createNetworkActivityStream(opts) {
+    throw new Error('not yet implemented') // TODO
+  },
+
+  async importFromFilesystem(opts) {
+    var { archive, filepath } = lookupArchive(opts.dst)
+    return pda.exportFilesystemToArchive({
+      srcPath: opts.srcPath,
+      dstArchive: archive,
+      dstPath: filepath,
+      ignore: opts.ignore,
+      dryRun: opts.dryRun,
+      inplaceImport: true,
+      skipUndownloadedFiles: true
+    })
+  },
+
+  async exportToFilesystem(opts) {
+    var { archive, filepath } = lookupArchive(opts.src)
+    return pda.exportArchiveToFilesystem({
+      srcArchive: archive,
+      srcPath: filepath,
+      dstPath: opts.dstPath,
+      overwriteExisting: true
+    })
+  },
+
+  async exportToArchive(opts) {
     throw new Error('not yet implemented') // TODO
   }
 }

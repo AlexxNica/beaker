@@ -1,9 +1,10 @@
 export default {
   createArchive: 'promise',
   forkArchive: 'promise',
+  loadArchive: 'promise',
 
   getInfo: 'promise',
-  setInfo: 'promise',
+  updateManifest: 'promise',
 
   stat: 'promise',
   readFile: 'promise',

@@ -31,7 +31,12 @@ import getFolderSize from 'get-folder-size'
 // constants
 // =
 
-import {DAT_MANIFEST_FILENAME, DAT_URL_REGEX} from '../../../lib/const'
+import {
+  DAT_MANIFEST_FILENAME,
+  DAT_HASH_REGEX,
+  DAT_URL_REGEX,
+  InvalidURLError
+} from '../../../lib/const'
 
 // globals
 // =
@@ -49,7 +54,7 @@ export function setup () {
 
   // wire up event handlers
   archivesDb.on('update:archive-user-settings', (key, settings) => {
-  archivesEvents.emit('update-user-settings', { key, isSaved: settings.isSaved })
+    archivesEvents.emit('update-user-settings', { key, isSaved: settings.isSaved })
     configureArchive(key, settings)
   })
 
@@ -60,15 +65,7 @@ export function setup () {
   )
 }
 
-// re-exports
-//
-
-export const resolveName = datDns.resolveName
-export const setArchiveUserSettings = archivesDb.setArchiveUserSettings
-export const getGlobalSetting = archivesDb.getGlobalSetting
-export const setGlobalSetting = archivesDb.setGlobalSetting
-
-// archive creation and mutation
+// archive creation
 // =
 
 export async function createNewArchive (manifest) {
@@ -124,55 +121,6 @@ export async function forkArchive (srcArchiveUrl, manifest={}) {
   return dstArchiveUrl
 }
 
-// TODO move to web api
-export function updateArchiveManifest (key, updates) {
-  var archive = getArchive(key)
-  if (!archive) {
-    return Promise.reject(new Error('Invalid archive key'))
-  }
-  return pda.updateManifest(archive, updates)
-}
-
-// TODO move to web api
-export function writeArchiveFileFromData (key, path, data, opts) {
-  var archive = getArchive(key)
-  if (!archive) {
-    return Promise.reject(new Error('Invalid archive key'))
-  }
-  return pda.writeFile(archive, path, data, opts)
-}
-
-// TODO move to web api
-export function writeArchiveFileFromPath (dstKey, opts) {
-  var dstArchive = getArchive(dstKey)
-  if (!dstArchive) {
-    return Promise.reject(new Error('Invalid archive key'))
-  }
-  return pda.exportFilesystemToArchive({
-    srcPath: opts.src,
-    dstArchive,
-    dstPath: opts.dst,
-    ignore: opts.ignore,
-    dryRun: opts.dryRun,
-    inplaceImport: true,
-    skipUndownloadedFiles: true
-  })
-}
-
-// TODO move to web api
-export function exportFileFromArchive (srcKey, srcPath, dstPath) {
-  var srcArchive = getArchive(srcKey)
-  if (!srcArchive) {
-    return Promise.reject(new Error('Invalid archive key'))
-  }
-  return pda.exportArchiveToFilesystem({
-    srcArchive,
-    srcPath,
-    dstPath,
-    overwriteExisting: true
-  })
-}
-
 // archive management
 // =
 
@@ -207,7 +155,11 @@ export function configureArchive (key, settings) {
 
 export function loadArchive (key, { noSwarm } = {}) {
   // validate key
-  if (key !== null && (!Buffer.isBuffer(key) || key.length !== 32)) {
+  if (key) {
+    key = fromURLToKey(key)
+    if (!DAT_HASH_REGEX.test(key)) {
+      throw new InvalidURLError()
+    }
     return
   }
 
@@ -278,74 +230,58 @@ export async function queryArchives (query) {
   return archiveInfos
 }
 
-export async function getArchiveDetails (name, opts = {}) {
+export async function getArchiveInfo (key, opts = {}) {
   // get the archive
-  var key = await datDns.resolveName(name)
+  key = fromURLToKey(key)
   var archive = getOrLoadArchive(key)
 
   // fetch archive data
-  var [meta, userSettings, entries] = await Promise.all([
+  var [meta, userSettings] = await Promise.all([
     archivesDb.getArchiveMeta(key),
-    archivesDb.getArchiveUserSettings(key),
-    (opts.entries) ? new Promise(resolve => archive.list((err, entries) => resolve(entries))) : null
+    archivesDb.getArchiveUserSettings(key)
   ])
-
-  // attach additional data
   meta.userSettings = userSettings
-  meta.entries = entries
+  meta.peers = archive.metadata.peers.length
 
-  // metadata for history view
-  meta.blocks = archive.metadata.blocks
-  meta.metaSize = archive.metadata.bytes
-  meta.contentKey = archive.content.key
-
+  // optional data
   if (opts.contentBitfield) {
     meta.contentBitfield = archive.content.bitfield.buffer
   }
-  meta.peers = archive.metadata.peers.length
-  return meta
-}
+  if (opts.stats) { 
+    // fetch the archive entries
+    var entries = await pify(archive.list.bind(archive))()
 
-export async function getArchiveStats (key) {
-  // fetch archive
-  var archive = getArchive(key)
-  if (!archive) {
-    throw new Error('Invalid archive key')
-  }
+    // TEMPORARY
+    // remove duplicates
+    // this is only needed until hyperdrive fixes its .list()
+    // see https://github.com/mafintosh/hyperdrive/pull/99
+    // -prf
+    var entriesDeDuped = {}
+    entries.forEach(entry => { entriesDeDuped[entry.name] = entry })
+    entries = Object.keys(entriesDeDuped).map(name => entriesDeDuped[name])
 
-  // fetch the archive entries
-  var entries = await pify(archive.list.bind(archive))()
-
-  // TEMPORARY
-  // remove duplicates
-  // this is only needed until hyperdrive fixes its .list()
-  // see https://github.com/mafintosh/hyperdrive/pull/99
-  // -prf
-  var entriesDeDuped = {}
-  entries.forEach(entry => { entriesDeDuped[entry.name] = entry })
-  entries = Object.keys(entriesDeDuped).map(name => entriesDeDuped[name])
-
-  // tally the current state
-  var stats = {
-    peers: archive.metadata.peers.length,
-    filesTotal: 0,
-    meta: {
-      blocksProgress: archive.metadata.blocks - archive.metadata.blocksRemaining(),
-      blocksTotal: archive.metadata.blocks
-    },
-    content: {
-      bytesTotal: 0,
-      blocksProgress: 0,
-      blocksTotal: 0
+    // tally the current state
+    var stats = {
+      filesTotal: 0,
+      meta: {
+        blocksProgress: archive.metadata.blocks - archive.metadata.blocksRemaining(),
+        blocksTotal: archive.metadata.blocks
+      },
+      content: {
+        bytesTotal: 0,
+        blocksProgress: 0,
+        blocksTotal: 0
+      }
     }
+    entries.forEach(entry => {
+      stats.content.bytesTotal += entry.length
+      stats.content.blocksProgress += archive.countDownloadedBlocks(entry)
+      stats.content.blocksTotal += entry.blocks
+      stats.filesTotal++
+    })
+    meta.stats = stats
   }
-  entries.forEach(entry => {
-    stats.content.bytesTotal += entry.length
-    stats.content.blocksProgress += archive.countDownloadedBlocks(entry)
-    stats.content.blocksTotal += entry.blocks
-    stats.filesTotal++
-  })
-  return stats
+  return meta
 }
 
 // archive networking
@@ -411,89 +347,35 @@ export function leaveSwarm (key, cb) {
   archive.isSwarming = false
 }
 
-// prioritize all current entries for download
-export async function downloadArchive (key) {
-  return cbPromise(cb => {
-    // get the archive
-    var archive = getArchive(key)
-    if (!archive) cb(new Error('Invalid archive key'))
-
-    // get the current file listing
-    archive.list((err, entries) => {
-      if (err) return cb(err)
-
-      // TEMPORARY
-      // remove duplicates
-      // this is only needed until hyperdrive fixes its .list()
-      // see https://github.com/mafintosh/hyperdrive/pull/99
-      // -prf
-      var entriesDeDuped = {}
-      entries.forEach(entry => { entriesDeDuped[entry.name] = entry })
-      entries = Object.keys(entriesDeDuped).map(name => entriesDeDuped[name])
-
-      // download the enties
-      var done = multicb()
-      entries.forEach(entry => {
-        if (entry.blocks > 0) {
-          archive.download(entry, done())
-        }
-      })
-      done(() => cb())
-    })
-  })
-}
-
-// prioritize an entry for download
-export function downloadArchiveEntry (key, name, opts) {
-  var archive = getArchive(key)
-  if (!archive) {
-    Promise.reject(new Error('Invalid archive key'))
-  }
-  return pda.download(archive, name, opts)
-}
-
-export function archivesEventStream () {
-  return emitStream(archivesEvents)
-}
-
 // internal methods
 // =
 
 // read metadata for the archive, and store it in the meta db
-function pullLatestArchiveMeta (archive) {
+async function pullLatestArchiveMeta (archive) {
   var key = archive.key.toString('hex')
-  var done = multicb({ pluck: 1, spread: true })
 
   // open() just in case (we need .blocks)
-  archive.open(() => {
-    // read the archive metafiles
-    pda.readManifest(archive, done())
+  await pify(archive.open.bind(archive))()
 
-    // calculate the size on disk
-    var sizeCb = done()
-    getFolderSize(archivesDb.getArchiveFilesPath(archive), (_, size) => {
-      sizeCb(null, size)
-    })
+  // read the archive meta and size on disk
+  var [manifest, size] = await Promise.all([
+    pda.readManifest(archive),
+    pify(getFolderSize)(archivesDb.getArchiveFilesPath(archive))
+  ])
+  manifest = manifest || {}
+  var { title, description, author, version, forkOf, createdBy } = manifest
+  var mtime = Date.now() // use our local update time
+  var isOwner = archive.owner
+  size = size || 0
 
-    done((_, manifest, size) => {
-      manifest = manifest || {}
-      var { title, description, author, version, forkOf, createdBy } = manifest
-      var mtime = Date.now() // use our local update time
-      var isOwner = archive.owner
-      size = size || 0
+  // write the record
+  var update = { title, description, author, version, forkOf, createdBy, mtime, size, isOwner }
+  debug('Writing meta', update)
+  await archivesDb.setArchiveMeta(key, update)
 
-      // write the record
-      var update = { title, description, author, version, forkOf, createdBy, mtime, size, isOwner }
-      debug('Writing meta', update)
-      archivesDb.setArchiveMeta(key, update).then(
-        () => {
-          update.key = key
-          archivesEvents.emit('update-archive', update)
-        },
-        err => debug('Error while writing archive meta', key, err)
-      )
-    })
-  })
+  // emit the update event
+  update.key = key
+  archivesEvents.emit('update-archive', update)
 }
 
 function fromURLToKey (url) {
