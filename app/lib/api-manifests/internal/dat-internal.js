@@ -1,7 +1,6 @@
 export default {
   queryArchives: 'promise',
-  getArchiveDetails: 'promise',
-  getArchiveStats: 'promise',
+  getArchiveInfo: 'promise',
 
   resolveName: 'promise',
 
@@ -10,13 +9,8 @@ export default {
   setArchiveUserSettings: 'promise',
   updateArchiveManifest: 'promise',
 
-  writeArchiveFileFromData: 'promise',
-  writeArchiveFileFromPath: 'promise',
-  exportFileFromArchive: 'promise',
-
   swarm: 'sync',
   unswarm: 'sync',
-  downloadArchiveEntry: 'promise',
   openInExplorer: 'sync',
   archivesEventStream: 'readable',
 

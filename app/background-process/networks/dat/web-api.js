@@ -55,7 +55,7 @@ export default {
     if (!url || typeof url !== 'string') {
       return Promise.reject(new InvalidURLError())
     }
-    dat.loadArchive(url)
+    dat.getOrLoadArchive(url)
     return Promise.resolve(true)
   },
 
@@ -107,7 +107,7 @@ export default {
     return pda.download(archive, filepath, opts)
   },
 
-  async readDirectory(url, opts = {}) {
+  async listFiles(url, opts = {}) {
     var { archive, filepath } = lookupArchive(url)
     return pda.listFiles(archive, filepath, opts)
   },
@@ -182,7 +182,7 @@ async function assertWritePermission (archive, sender) {
   if (allowed) return true
 
   // ask the user
-  var details = await dat.getArchiveDetails(archiveKey)
+  var details = await dat.getArchiveInfo(archiveKey)
   allowed = await requestPermission(perm, sender, { title: details.title })
   if (!allowed) throw new UserDeniedError()
   return true

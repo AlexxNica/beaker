@@ -24,20 +24,12 @@ export function setup () {
         beakerDownloads,
         beakerHistory,
         beakerSitedata,
-        datInternalAPI,
-        dat
+        datInternalAPI
       }
       event.returnValue = protos
       return
     }
 
-    protos = {}
-
-    // include dat api in dat:// sites
-    if (scheme === 'dat:') {
-      protos = {dat}
-    }
-
-    event.returnValue = protos
+    event.returnValue = {}
   })
 }

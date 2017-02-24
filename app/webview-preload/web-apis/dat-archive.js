@@ -1,6 +1,7 @@
 import {ipcRenderer} from 'electron'
 import rpc from 'pauls-electron-rpc'
 import datManifest from '../../lib/api-manifests/external/dat'
+import {DAT_URL_REGEX} from '../../lib/const'
 
 // create the dat rpc api
 const dat = rpc.importAPI('dat', datManifest, { timeout: false, noEval: true })
@@ -11,6 +12,11 @@ export default class DatArchive {
     if (!url || typeof url !== 'string') {
       throw new Error('Invalid dat:// URL')
     }
+    var key = DAT_URL_REGEX.exec(url)
+    if (!key[1]) {
+      throw new Error('Invalid dat:// URL')
+    }
+    url = 'dat://' + key[1]
 
     // load into the 'active' (in-memory) cache
     dat.loadArchive(url)
@@ -42,42 +48,42 @@ export default class DatArchive {
   }
 
   async stat(path, opts=null) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.stat(url, opts)
   }
 
   async readFile(path, opts=null) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.readFile(url, opts)
   }
 
   async writeFile(path, data, opts=null) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.writeFile(url, data, opts)
   }
 
   async deleteFile(path) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.deleteFile(url)
   }
 
   async download(path, opts) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.download(url, opts)
   }
 
   async listFiles(path, opts) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.listFiles(url, opts)
   }
 
   async createDirectory(path) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.createDirectory(url)
   }
 
   async deleteDirectory(path) {
-    const url = makeUrl(this.url, path)
+    const url = join(this.url, path)
     return dat.deleteDirectory(url)
   }
 
@@ -100,4 +106,9 @@ export default class DatArchive {
   // static async exportToArchive(opts) {
   //   // TODO
   // }
+}
+
+function join (url, path) {
+  if (path.charAt(0) === '/') return url + path
+  return url + '/' + path
 }

@@ -46,6 +46,17 @@ var archives = {} // memory cache of archive objects. key -> archive
 var archivesByDiscoveryKey = {} // mirror of the above cache, but discoveryKey -> archive
 var archivesEvents = new EventEmitter()
 
+// temporary methods
+// =
+// TODO remove these
+export const resolveName = datDns.resolveName
+export const setArchiveUserSettings = archivesDb.setArchiveUserSettings
+export const getGlobalSetting = archivesDb.getGlobalSetting
+export const setGlobalSetting = archivesDb.setGlobalSetting
+export function archivesEventStream () {
+  return emitStream(archivesEvents)
+}
+
 // exported API
 // =
 
@@ -81,7 +92,9 @@ export async function createNewArchive (manifest) {
   await setArchiveUserSettings(key, { isSaved: true })
 
   // write the perms
-  if (createdBy && createdBy.url) grantPermission('modifyDat:' + key, createdBy.url)
+  if (manifest.createdBy && manifest.createdBy.url) {
+    grantPermission('modifyDat:' + key, manifest.createdBy.url)
+  }
 
   return manifest.url
 }
@@ -155,12 +168,12 @@ export function configureArchive (key, settings) {
 
 export function loadArchive (key, { noSwarm } = {}) {
   // validate key
-  if (key) {
+  if (key && !Buffer.isBuffer(key)) {
     key = fromURLToKey(key)
     if (!DAT_HASH_REGEX.test(key)) {
       throw new InvalidURLError()
     }
-    return
+    key = datEncoding.toBuf(key)
   }
 
   // create the archive instance
@@ -204,7 +217,7 @@ export function getOrLoadArchive (key, opts) {
   if (archive) {
     return archive
   }
-  return loadArchive(datEncoding.toBuf(fromURLToKey(key)), opts)
+  return loadArchive(key, opts)
 }
 
 export function openInExplorer (key) {
@@ -281,6 +294,7 @@ export async function getArchiveInfo (key, opts = {}) {
     })
     meta.stats = stats
   }
+
   return meta
 }
 

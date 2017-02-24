@@ -542,7 +542,7 @@ function onDidStopLoading (e) {
       page.checkForDatAlternative(hostname)
     }
     if (protocol === 'dat:') {
-      datInternalAPI.getArchiveDetails(hostname).then(info => {
+      datInternalAPI.getArchiveInfo(hostname).then(info => {
         page.siteInfo = info
         navbar.update(page)
       })
