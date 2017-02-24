@@ -6,17 +6,13 @@ import datManifest from '../../lib/api-manifests/external/dat'
 const dat = rpc.importAPI('dat', datManifest, { timeout: false, noEval: true })
 
 export default class DatArchive {
-  constructor(opts=null) {
-    let url
-    if (typeof opts === 'string') {
-      // verify existence and validity of url
-      // ... and load into the 'active' (in-memory) cache
-      url = opts
-      dat.loadArchive(url)
-    } else {
-      // create new archive
-      url = dat.createArchive(opts)
-    }
+  constructor(url) {
+    // verify URL is valid
+    // TODO
+
+    // load into the 'active' (in-memory) cache
+    dat.loadArchive(url)
+
     // define this.url as a frozen getter
     Object.defineProperty(this, 'url', {
       enumerable: true,
@@ -24,14 +20,19 @@ export default class DatArchive {
     })
   }
 
-  static fork (url, opts=null) {
+  static async create (opts=null) {
+    var newUrl = await dat.createArchive(opts)
+    return new DatArchive(newUrl)
+  }
+
+  static async fork (url, opts=null) {
     url = (typeof url.url === 'string') ? url.url : url
-    return new DatArchive(dat.forkArchive(url, opts))
+    var newUrl = await dat.forkArchive(url, opts)
+    return new DatArchive(newUrl)
   }
 
   async getInfo(opts=null) {
-    // TODO opts needed?
-    return dat.getInfo(this.url)
+    return dat.getInfo(this.url, opts)
   }
 
   async setInfo(info) {

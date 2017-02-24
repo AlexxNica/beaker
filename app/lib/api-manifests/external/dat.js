@@ -1,6 +1,6 @@
 export default {
-  createArchive: 'sync',
-  forkArchive: 'sync',
+  createArchive: 'promise',
+  forkArchive: 'promise',
 
   getInfo: 'promise',
   setInfo: 'promise',
