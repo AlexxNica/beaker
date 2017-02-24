@@ -7,8 +7,10 @@ const dat = rpc.importAPI('dat', datManifest, { timeout: false, noEval: true })
 
 export default class DatArchive {
   constructor(url) {
-    // verify URL is valid
-    // TODO
+    // basic URL validation
+    if (!url || typeof url !== 'string') {
+      throw new Error('Invalid dat:// URL')
+    }
 
     // load into the 'active' (in-memory) cache
     dat.loadArchive(url)
