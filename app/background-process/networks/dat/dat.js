@@ -110,19 +110,19 @@ export async function forkArchive (srcArchiveUrl, manifest={}) {
   }
 
   // fetch old archive meta
-  var meta = await archivesDb.getArchiveMeta(srcArchiveUrl)
+  var srcManifest = await pda.readManifest(srcArchive).catch(err => {})
 
   // override any manifest data
-  var dstArchiveManifest = {
-    title: (manifest.title) ? manifest.title : meta.title,
-    description: (manifest.description) ? manifest.description : meta.description,
+  var dstManifest = {
+    title: (manifest.title) ? manifest.title : srcManifest.title,
+    description: (manifest.description) ? manifest.description : srcManifest.description,
     createdBy: manifest.createdBy,
-    forkOf: (meta.forkOf || []).concat(srcArchiveUrl)
+    forkOf: (srcManifest.forkOf || []).concat(srcArchiveUrl)
   }
 
   // create the new archive
-  var dstArchiveUrl = await createNewArchive(dstArchiveManifest)
-  var dstArchive = getArchive(dstArchiveKey)
+  var dstArchiveUrl = await createNewArchive(dstManifest)
+  var dstArchive = getArchive(dstArchiveUrl)
 
   // copy files
   await pda.exportArchiveToArchive({
@@ -131,6 +131,7 @@ export async function forkArchive (srcArchiveUrl, manifest={}) {
     skipUndownloadedFiles: true,
     ignore: ['/dat.json']
   })
+
   return dstArchiveUrl
 }
 
@@ -373,7 +374,7 @@ async function pullLatestArchiveMeta (archive) {
 
   // read the archive meta and size on disk
   var [manifest, size] = await Promise.all([
-    pda.readManifest(archive),
+    pda.readManifest(archive).catch(err => {}),
     pify(getFolderSize)(archivesDb.getArchiveFilesPath(archive))
   ])
   manifest = manifest || {}

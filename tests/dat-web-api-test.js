@@ -41,7 +41,7 @@ test.before(async t => {
   await app.client.waitForExist('h1#loaded')
 })
 test.after.always('cleanup', async t => {
-  console.log(await app.client.getMainProcessLogs())
+  console.log(JSON.stringify(await app.client.getMainProcessLogs(), null, 2))
   await app.stop()
 })
 
@@ -219,6 +219,47 @@ test('DatArchive.create', async t => {
   }, createdDatKey)
   await app.client.windowByIndex(1)
   t.deepEqual(details.value.userSettings.isSaved, true)
+})
+
+test('DatArchive.fork', async t => {
+  // start the prompt
+  await app.client.execute((url) => {
+    // put the result on the window, for checking later
+    window.res = null
+    DatArchive.fork(url, { description: 'The Description 2' }).then(
+      res => window.res = res,
+      err => window.res = err
+    )
+  }, createdDatURL)
+
+  // accept the prompt
+  await app.client.windowByIndex(0)
+  await app.client.click('.prompt-accept')
+  await app.client.windowByIndex(1)
+
+  // fetch & test the res
+  await app.client.pause(500)
+  await app.client.waitUntil(() => app.client.execute(() => { return window.res != null }))
+  var res = await app.client.execute(() => { return window.res })
+  var forkedDatURL = res.value.url
+  t.truthy(forkedDatURL.startsWith('dat://'))
+
+  // check the dat.json
+  var res = await app.client.executeAsync((url, done) => {
+    var archive = new DatArchive(url)
+    archive.readFile('dat.json').then(done, done)
+  }, forkedDatURL)
+  var manifest
+  try {
+    var manifest = JSON.parse(res.value)
+  } catch (e) {
+    console.log('unexpected error parsing manifest', res.value)
+  }
+  t.deepEqual(manifest.title, 'The Title')
+  t.deepEqual(manifest.description, 'The Description 2')
+  t.deepEqual(manifest.createdBy.url, testRunnerDatURL.slice(0, -1))
+  t.deepEqual(manifest.createdBy.title, 'Test Runner Dat')
+  t.deepEqual(manifest.forkOf[0], createdDatURL)
 })
 
 test('archive.writeFile', async t => {
