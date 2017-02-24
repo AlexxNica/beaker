@@ -528,3 +528,53 @@ test('archive.writeFile & archive.createDirectory doesnt allow writes to archive
   }, newTestDatURL)
   t.falsy(res.value, 'createdirectory accepted')
 })
+
+test('archive.getInfo', async t => {
+
+  // getInfo gives manifest info and stats
+  // =
+
+  var res = await app.client.executeAsync((url, done) => {
+    var archive = new DatArchive(url)
+    archive.getInfo({stats: true}).then(done, done)
+  }, createdDatURL)
+  var info = res.value
+  t.deepEqual(info.title, 'The Title')
+  t.deepEqual(info.description, 'The Description')
+  t.deepEqual(info.createdBy.url, testRunnerDatURL.slice(0, -1))
+  t.deepEqual(info.createdBy.title, 'Test Runner Dat')
+  t.truthy(info.stats)
+  t.truthy(info.stats.meta.blocksTotal)
+  t.truthy(info.stats.content.blocksTotal)
+  t.deepEqual(info.stats.meta.blocksProgress, info.stats.meta.blocksTotal)
+  t.deepEqual(info.stats.content.blocksProgress, info.stats.content.blocksTotal)
+})
+
+
+test('archive.updateManifest', async t => {
+
+  // updateManifest updates the manifest file
+  // =
+
+  var res = await app.client.executeAsync((url, done) => {
+    var archive = new DatArchive(url)
+    archive.updateManifest({title: 'New Title', description: 'New Description', trash: 'discarded'}).then(done, done)
+  }, createdDatURL)
+
+  // check the dat.json
+  var res = await app.client.executeAsync((url, done) => {
+    var archive = new DatArchive(url)
+    archive.readFile('dat.json').then(done, done)
+  }, createdDatURL)
+  var manifest
+  try {
+    var manifest = JSON.parse(res.value)
+  } catch (e) {
+    console.log('unexpected error parsing manifest', res.value)
+  }
+  t.deepEqual(manifest.title, 'New Title')
+  t.deepEqual(manifest.description, 'New Description')
+  t.falsy(manifest.trash)
+  t.deepEqual(manifest.createdBy.url, testRunnerDatURL.slice(0, -1))
+  t.deepEqual(manifest.createdBy.title, 'Test Runner Dat')
+})

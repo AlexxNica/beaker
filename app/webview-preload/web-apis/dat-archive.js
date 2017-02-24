@@ -43,8 +43,8 @@ export default class DatArchive {
     return dat.getInfo(this.url, opts)
   }
 
-  async updateManifest(info) {
-    return dat.updateManifest(this.url, info)
+  async updateManifest(manifest) {
+    return dat.updateManifest(this.url, manifest)
   }
 
   async stat(path, opts=null) {

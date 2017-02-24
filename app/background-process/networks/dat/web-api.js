@@ -65,7 +65,7 @@ export default {
 
   async updateManifest(url, manifest) {
     var { archive, filepath } = lookupArchive(url)
-    return pda.updateManifest(archive, updates)
+    return pda.updateManifest(archive, manifest)
   },
 
   async stat(url, opts = {}) {
@@ -241,12 +241,8 @@ function lookupArchive (url) {
     }
 
     archiveKey = urlp.host
-    filepath = urlp.pathname
+    filepath = urlp.pathname || ''
   }
-
-  // multiple slashes at the start of the filepath is an easy mistake to make in URL construction
-  // correct against it automatically
-  filepath = filepath.replace(/^\/+/, '/')
 
   // lookup the archive
   var archive = dat.getArchive(archiveKey)
