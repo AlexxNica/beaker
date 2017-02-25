@@ -21,6 +21,7 @@ var testStaticDat, testStaticDatURL
 var testRunnerDat, testRunnerDatURL
 var createdDatURL // url of the dat which is created by testRunnerDat, which gives it write access
 var createdDatKey
+var beakerPng = fs.readFileSync(__dirname + '/scaffold/test-static-dat/beaker.png')
 
 test.before(async t => {
   // open the window
@@ -56,6 +57,12 @@ async function stat (url, path, opts) {
     res.value = JSON.parse(res.value)
   return res
 }
+async function readFile (url, path, opts) {
+  return app.client.executeAsync((url, path, opts, done) => {
+    var archive = new DatArchive(url)
+    archive.readFile(path, opts).then(done, done)
+  }, url, path, opts)
+}
 
 // tests
 //
@@ -78,15 +85,6 @@ test('archive.listFiles', async t => {
 })
 
 test('archive.readFile', async t => {
-  async function readFile (url, path, opts) {
-    return app.client.executeAsync((url, path, opts, done) => {
-      var archive = new DatArchive(url)
-      archive.readFile(path, opts).then(done, done)
-    }, url, path, opts)
-  }
-
-  var beakerPng = fs.readFileSync(__dirname + '/scaffold/test-static-dat/beaker.png')
-
   // read utf8
   var helloTxt = await readFile(testStaticDatURL, 'hello.txt', {})
   t.deepEqual(helloTxt.value, 'hello')
@@ -632,4 +630,108 @@ test('archive.download', async t => {
     archive.download('/does-not-exist', {timeout: 500}).then(done, done)
   }, testStaticDat2URL)
   t.truthy(Date.now() - start < 1000)
+})
+
+test('DatArchive.importFromFilesystem', async t => {
+  // do this in the shell so we dont have to ask permission
+  await app.client.windowByIndex(0)
+
+  // import adds all files from target
+  // =
+
+  // create a new archive
+  var res = await app.client.executeAsync((done) => {
+    DatArchive.create().then(done,done)
+  })
+  var archiveURL = res.value.url
+  t.truthy(archiveURL)
+
+  // run import
+  var res = await app.client.executeAsync((srcPath, dst, done) => {
+    DatArchive.importFromFilesystem({srcPath, dst}).then(done,done)
+  }, __dirname + '/scaffold/test-static-dat', archiveURL)
+  t.deepEqual(res.value.addedFiles.length, 3)
+
+  // test files
+  var res = await readFile(archiveURL, 'hello.txt')
+  t.deepEqual(res.value, 'hello')
+  var res = await readFile(archiveURL, 'subdir/hello.txt')
+  t.deepEqual(res.value, 'hi')
+  var res = await readFile(archiveURL, 'beaker.png', 'base64')
+  t.deepEqual(res.value, beakerPng.toString('base64'))
+
+  // non-inplace import adds all files from target to a subdir
+  // =
+
+  // create a new archive
+  var res = await app.client.executeAsync((done) => {
+    DatArchive.create().then(done,done)
+  })
+  var archiveURL = res.value.url
+  t.truthy(archiveURL)
+
+  // run import
+  var res = await app.client.executeAsync((srcPath, dst, done) => {
+    DatArchive.importFromFilesystem({srcPath, dst, inplaceImport: false}).then(done,done)
+  }, __dirname + '/scaffold/test-static-dat', archiveURL)
+  t.deepEqual(res.value.addedFiles.length, 3)
+
+  // test files
+  var res = await readFile(archiveURL, 'test-static-dat/hello.txt')
+  t.deepEqual(res.value, 'hello')
+  var res = await readFile(archiveURL, 'test-static-dat/subdir/hello.txt')
+  t.deepEqual(res.value, 'hi')
+  var res = await readFile(archiveURL, 'test-static-dat/beaker.png', 'base64')
+  t.deepEqual(res.value, beakerPng.toString('base64'))
+
+  // ignores file as specified
+  // =
+
+  // create a new archive
+  var res = await app.client.executeAsync((done) => {
+    DatArchive.create().then(done,done)
+  })
+  var archiveURL = res.value.url
+  t.truthy(archiveURL)
+
+  // run import
+  var res = await app.client.executeAsync((srcPath, dst, done) => {
+    DatArchive.importFromFilesystem({srcPath, dst, ignore: ['**/*.txt']}).then(done,done)
+  }, __dirname + '/scaffold/test-static-dat', archiveURL)
+  t.deepEqual(res.value.addedFiles.length, 1)
+
+  // test files
+  var res = await readFile(archiveURL, 'hello.txt')
+  console.log(res.value)
+  t.deepEqual(res.value.name, 'NotFoundError')
+  var res = await readFile(archiveURL, 'subdir/hello.txt')
+  t.deepEqual(res.value.name, 'NotFoundError')
+  var res = await readFile(archiveURL, 'beaker.png', 'base64')
+  t.deepEqual(res.value, beakerPng.toString('base64'))
+
+  // dry-runs as specified
+  // =
+
+  // create a new archive
+  var res = await app.client.executeAsync((done) => {
+    DatArchive.create().then(done,done)
+  })
+  var archiveURL = res.value.url
+  t.truthy(archiveURL)
+
+  // run import
+  var res = await app.client.executeAsync((srcPath, dst, done) => {
+    DatArchive.importFromFilesystem({srcPath, dst, dryRun: true}).then(done,done)
+  }, __dirname + '/scaffold/test-static-dat', archiveURL)
+  t.deepEqual(res.value.addedFiles.length, 3)
+
+  // test files
+  var res = await readFile(archiveURL, 'hello.txt')
+  console.log(res.value)
+  t.deepEqual(res.value.name, 'NotFoundError')
+  var res = await readFile(archiveURL, 'subdir/hello.txt')
+  t.deepEqual(res.value.name, 'NotFoundError')
+  var res = await readFile(archiveURL, 'beaker.png', 'base64')
+  t.deepEqual(res.value.name, 'NotFoundError')
+
 })

@@ -1,7 +1,7 @@
 import {ipcRenderer} from 'electron'
 import rpc from 'pauls-electron-rpc'
-import datManifest from '../../lib/api-manifests/external/dat'
-import {DAT_URL_REGEX} from '../../lib/const'
+import datManifest from '../api-manifests/external/dat'
+import {DAT_URL_REGEX} from '../const'
 
 // create the dat rpc api
 const dat = rpc.importAPI('dat', datManifest, { timeout: false, noEval: true })
@@ -28,62 +28,62 @@ export default class DatArchive {
     })
   }
 
-  static async create (opts=null) {
-    var newUrl = await dat.createArchive(opts)
-    return new DatArchive(newUrl)
+  static create (opts={}) {
+    return dat.createArchive(opts)
+      .then(newUrl => new DatArchive(newUrl))
   }
 
-  static async fork (url, opts=null) {
+  static fork (url, opts={}) {
     url = (typeof url.url === 'string') ? url.url : url
-    var newUrl = await dat.forkArchive(url, opts)
-    return new DatArchive(newUrl)
+    return dat.forkArchive(url, opts)
+      .then(newUrl => new DatArchive(newUrl))
   }
 
-  async getInfo(opts=null) {
+  getInfo(opts=null) {
     return dat.getInfo(this.url, opts)
   }
 
-  async updateManifest(manifest) {
+  updateManifest(manifest) {
     return dat.updateManifest(this.url, manifest)
   }
 
-  async stat(path, opts=null) {
-    const url = join(this.url, path)
+  stat(path, opts=null) {
+    const url = joinPath(this.url, path)
     return dat.stat(url, opts)
   }
 
-  async readFile(path, opts=null) {
-    const url = join(this.url, path)
+  readFile(path, opts=null) {
+    const url = joinPath(this.url, path)
     return dat.readFile(url, opts)
   }
 
-  async writeFile(path, data, opts=null) {
-    const url = join(this.url, path)
+  writeFile(path, data, opts=null) {
+    const url = joinPath(this.url, path)
     return dat.writeFile(url, data, opts)
   }
 
-  async deleteFile(path) {
-    const url = join(this.url, path)
+  deleteFile(path) {
+    const url = joinPath(this.url, path)
     return dat.deleteFile(url)
   }
 
-  async download(path, opts) {
-    const url = join(this.url, path)
+  download(path, opts) {
+    const url = joinPath(this.url, path)
     return dat.download(url, opts)
   }
 
-  async listFiles(path, opts) {
-    const url = join(this.url, path)
+  listFiles(path, opts) {
+    const url = joinPath(this.url, path)
     return dat.listFiles(url, opts)
   }
 
-  async createDirectory(path) {
-    const url = join(this.url, path)
+  createDirectory(path) {
+    const url = joinPath(this.url, path)
     return dat.createDirectory(url)
   }
 
-  async deleteDirectory(path) {
-    const url = join(this.url, path)
+  deleteDirectory(path) {
+    const url = joinPath(this.url, path)
     return dat.deleteDirectory(url)
   }
 
@@ -95,20 +95,20 @@ export default class DatArchive {
   //   // TODO
   // }
 
-  // static async importFromFilesystem(opts) {
-  //   // TODO
-  // }
+  static importFromFilesystem(opts) {
+    return dat.importFromFilesystem(opts)
+  }
   
-  // static async exportToFilesystem(opts) {
-  //   // TODO
-  // }
+  static exportToFilesystem(opts) {
+    return dat.exportToFilesystem(opts)
+  }
   
-  // static async exportToArchive(opts) {
-  //   // TODO
-  // }
+  static exportToArchive(opts) {
+    return dat.exportToArchive(opts)
+  }
 }
 
-function join (url, path) {
+function joinPath (url, path) {
   if (path.charAt(0) === '/') return url + path
   return url + '/' + path
 }

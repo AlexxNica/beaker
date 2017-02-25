@@ -10,6 +10,7 @@ import {
   DAT_QUOTA_DEFAULT_BYTES_ALLOWED,
   DAT_VALID_PATH_REGEX,
 
+  PermissionsError,
   UserDeniedError,
   QuotaExceededError,
   ArchiveNotWritableError,
@@ -28,8 +29,10 @@ const DEFAULT_TIMEOUT = 5e3
 export default {
   async createArchive({title, description} = {}) {
     // ask the user
-    var decision = await requestPermission('createDat', this.sender, {title})
-    if (decision === false) throw new UserDeniedError()
+    if (!this.sender.getURL().startsWith('beaker:')) {
+      var decision = await requestPermission('createDat', this.sender, {title})
+      if (decision === false) throw new UserDeniedError()
+    }
 
     // get origin info
     var createdBy = await getCreatedBy(this.sender)
@@ -41,8 +44,10 @@ export default {
   async forkArchive(url, {title, description} = {}) {
     // ask the user
     // TODO should be fork-specific
-    var decision = await requestPermission('createDat', this.sender, {title})
-    if (decision === false) throw new UserDeniedError()
+    if (!this.sender.getURL().startsWith('beaker:')) {
+      var decision = await requestPermission('createDat', this.sender, {title})
+      if (decision === false) throw new UserDeniedError()
+    }
 
     // get origin info
     var createdBy = await getCreatedBy(this.sender)
@@ -135,6 +140,7 @@ export default {
   },
 
   async importFromFilesystem(opts) {
+    assertTmpBeakerOnly(this.sender)
     var { archive, filepath } = lookupArchive(opts.dst)
     return pda.exportFilesystemToArchive({
       srcPath: opts.srcPath,
@@ -142,23 +148,33 @@ export default {
       dstPath: filepath,
       ignore: opts.ignore,
       dryRun: opts.dryRun,
-      inplaceImport: true,
-      skipUndownloadedFiles: true
+      inplaceImport: opts.inplaceImport === false ? false : true
     })
   },
 
   async exportToFilesystem(opts) {
+    assertTmpBeakerOnly(this.sender)
     var { archive, filepath } = lookupArchive(opts.src)
     return pda.exportArchiveToFilesystem({
       srcArchive: archive,
       srcPath: filepath,
       dstPath: opts.dstPath,
-      overwriteExisting: true
+      ignore: opts.ignore,
+      overwriteExisting: opts.overwriteExisting,
+      skipUndownloadedFiles: opts.skipUndownloadedFiles === false ? false : true
     })
   },
 
   async exportToArchive(opts) {
-    throw new Error('not yet implemented') // TODO
+    assertTmpBeakerOnly(this.sender)
+    var src = lookupArchive(opts.src)
+    var dst = lookupArchive(opts.dst)
+    return pda.exportArchiveToArchive({
+      srcArchive: src.archive,
+      dstArchive: dst.archive,
+      ignore: opts.ignore,
+      skipUndownloadedFiles: opts.skipUndownloadedFiles === false ? false : true
+    })
   }
 }
 
@@ -170,12 +186,24 @@ function isProtectedFilePath (filepath) {
   return filepath === '/dat.json'
 }
 
+// temporary helper to make sure the call is made by a beaker: page
+function assertTmpBeakerOnly (sender) {
+  if (!sender.getURL().startsWith('beaker:')) {
+    throw new PermissionsError()
+  }
+}
+
 async function assertWritePermission (archive, sender) {
   var archiveKey = archive.key.toString('hex')
   const perm = ('modifyDat:' + archiveKey)
 
   // ensure we have the archive's private key
   if (!archive.owner) throw new ArchiveNotWritableError()
+
+  // beaker: always allowed
+  if (sender.getURL().startsWith('beaker:')) {
+    return true
+  }
 
   // ensure the sender is allowed to write
   var allowed = await queryPermission(perm, sender)
