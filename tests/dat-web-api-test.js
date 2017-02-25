@@ -733,5 +733,42 @@ test('DatArchive.importFromFilesystem', async t => {
   t.deepEqual(res.value.name, 'NotFoundError')
   var res = await readFile(archiveURL, 'beaker.png', 'base64')
   t.deepEqual(res.value.name, 'NotFoundError')
+})
 
+test('DatArchive.exportToFilesystem', async t => {
+  // do this in the shell so we dont have to ask permission
+  await app.client.windowByIndex(0)
+
+  // export adds all files to target
+  // =
+
+  // create a new dir
+  var testDirPath = fs.mkdtempSync(os.tmpdir() + path.sep + 'beaker-test-')
+
+  // export files
+  var res = await app.client.executeAsync((src, dstPath, done) => {
+    DatArchive.exportToFilesystem({src, dstPath, skipUndownloadedFiles: false}).then(done,done)
+  }, testStaticDatURL, testDirPath)
+  console.log(res.value, testDirPath)
+  t.deepEqual(res.value.addedFiles.length, 3)
+
+  // test files
+  t.deepEqual(fs.readFileSync(path.join(testDirPath, 'hello.txt'), 'utf8'), 'hello')
+  t.deepEqual(fs.readFileSync(path.join(testDirPath, 'subdir/hello.txt'), 'utf8'), 'hi')
+  t.deepEqual(fs.readFileSync(path.join(testDirPath, 'beaker.png'), 'base64'), beakerPng.toString('base64'))
+
+  // ignores file as specified
+  // =
+
+  // create a new dir
+  var testDirPath = fs.mkdtempSync(os.tmpdir() + path.sep + 'beaker-test-')
+
+  // export files
+  var res = await app.client.executeAsync((src, dstPath, done) => {
+    DatArchive.exportToFilesystem({src, dstPath, ignore:['**/*.txt'], skipUndownloadedFiles: false}).then(done,done)
+  }, testStaticDatURL, testDirPath)
+  t.deepEqual(res.value.addedFiles.length, 1)
+
+  // test files
+  t.deepEqual(fs.readFileSync(path.join(testDirPath, 'beaker.png'), 'base64'), beakerPng.toString('base64'))
 })

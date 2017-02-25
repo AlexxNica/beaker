@@ -95,15 +95,15 @@ export default class DatArchive {
   //   // TODO
   // }
 
-  static importFromFilesystem(opts) {
+  static importFromFilesystem(opts={}) {
     return dat.importFromFilesystem(opts)
   }
   
-  static exportToFilesystem(opts) {
+  static exportToFilesystem(opts={}) {
     return dat.exportToFilesystem(opts)
   }
   
-  static exportToArchive(opts) {
+  static exportToArchive(opts={}) {
     return dat.exportToArchive(opts)
   }
 }
