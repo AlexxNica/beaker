@@ -550,7 +550,6 @@ test('archive.getInfo', async t => {
   t.deepEqual(info.stats.content.blocksProgress, info.stats.content.blocksTotal)
 })
 
-
 test('archive.updateManifest', async t => {
 
   // updateManifest updates the manifest file
@@ -577,4 +576,60 @@ test('archive.updateManifest', async t => {
   t.falsy(manifest.trash)
   t.deepEqual(manifest.createdBy.url, testRunnerDatURL.slice(0, -1))
   t.deepEqual(manifest.createdBy.title, 'Test Runner Dat')
+})
+
+test('archive.download', async t => {
+
+  // download fetches an individual file
+  // =
+
+  // share the test static dat
+  var testStaticDat2 = await shareDat(__dirname + '/scaffold/test-static-dat')
+  var testStaticDat2URL = 'dat://' + testStaticDat2.archive.key.toString('hex')
+
+  // ensure not yet downloaded
+  var res = await stat(testStaticDat2URL, '/hello.txt', {downloadedBlocks: true})
+  t.deepEqual(res.value.downloadedBlocks, 0)
+
+  // download
+  var res = await app.client.executeAsync((url, done) => {
+    var archive = new DatArchive(url)
+    archive.download('/hello.txt').then(done, done)
+  }, testStaticDat2URL)
+
+  // ensure downloaded
+  var res = await stat(testStaticDat2URL, '/hello.txt', {downloadedBlocks: true})
+  t.deepEqual(res.value.downloadedBlocks, res.value.blocks)
+
+  // download fetches an entire folder
+  // =
+
+  // share the test static dat
+  var testStaticDat3 = await shareDat(__dirname + '/scaffold/test-static-dat')
+  var testStaticDat3URL = 'dat://' + testStaticDat3.archive.key.toString('hex')
+
+  // ensure not yet downloaded
+  var res = await stat(testStaticDat3URL, '/subdir/hello.txt', {downloadedBlocks: true})
+  t.deepEqual(res.value.downloadedBlocks, 0)
+
+  // download
+  var res = await app.client.executeAsync((url, done) => {
+    var archive = new DatArchive(url)
+    archive.download('/').then(done, done)
+  }, testStaticDat3URL)
+
+  // ensure downloaded
+  var res = await stat(testStaticDat3URL, '/subdir/hello.txt', {downloadedBlocks: true})
+  t.deepEqual(res.value.downloadedBlocks, res.value.blocks)
+
+  // download times out on bad files
+  // =
+
+  // download
+  var start = Date.now()
+  var res = await app.client.executeAsync((url, done) => {
+    var archive = new DatArchive(url)
+    archive.download('/does-not-exist', {timeout: 500}).then(done, done)
+  }, testStaticDat2URL)
+  t.truthy(Date.now() - start < 1000)
 })
