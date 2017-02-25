@@ -171,7 +171,9 @@ export default {
     var dst = lookupArchive(opts.dst)
     return pda.exportArchiveToArchive({
       srcArchive: src.archive,
+      srcPath: src.filepath,
       dstArchive: dst.archive,
+      dstPath: dst.filepath,
       ignore: opts.ignore,
       skipUndownloadedFiles: opts.skipUndownloadedFiles === false ? false : true
     })

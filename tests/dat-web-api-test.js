@@ -702,7 +702,6 @@ test('DatArchive.importFromFilesystem', async t => {
 
   // test files
   var res = await readFile(archiveURL, 'hello.txt')
-  console.log(res.value)
   t.deepEqual(res.value.name, 'NotFoundError')
   var res = await readFile(archiveURL, 'subdir/hello.txt')
   t.deepEqual(res.value.name, 'NotFoundError')
@@ -727,7 +726,6 @@ test('DatArchive.importFromFilesystem', async t => {
 
   // test files
   var res = await readFile(archiveURL, 'hello.txt')
-  console.log(res.value)
   t.deepEqual(res.value.name, 'NotFoundError')
   var res = await readFile(archiveURL, 'subdir/hello.txt')
   t.deepEqual(res.value.name, 'NotFoundError')
@@ -749,7 +747,6 @@ test('DatArchive.exportToFilesystem', async t => {
   var res = await app.client.executeAsync((src, dstPath, done) => {
     DatArchive.exportToFilesystem({src, dstPath, skipUndownloadedFiles: false}).then(done,done)
   }, testStaticDatURL, testDirPath)
-  console.log(res.value, testDirPath)
   t.deepEqual(res.value.addedFiles.length, 3)
 
   // test files
@@ -771,4 +768,55 @@ test('DatArchive.exportToFilesystem', async t => {
 
   // test files
   t.deepEqual(fs.readFileSync(path.join(testDirPath, 'beaker.png'), 'base64'), beakerPng.toString('base64'))
+})
+
+test('DatArchive.exportToArchive', async t => {
+  // do this in the shell so we dont have to ask permission
+  await app.client.windowByIndex(0)
+
+  // export adds all files to target
+  // =
+
+  // create a new archive
+  var res = await app.client.executeAsync((done) => {
+    DatArchive.create().then(done,done)
+  })
+  var archiveURL = res.value.url
+  t.truthy(archiveURL)
+
+  // export files
+  var res = await app.client.executeAsync((src, dst, done) => {
+    DatArchive.exportToArchive({src, dst, skipUndownloadedFiles: false}).then(done,done)
+  }, testStaticDatURL, archiveURL)
+
+  // test files
+  var res = await readFile(archiveURL, 'hello.txt')
+  t.deepEqual(res.value, 'hello')
+  var res = await readFile(archiveURL, 'subdir/hello.txt')
+  t.deepEqual(res.value, 'hi')
+  var res = await readFile(archiveURL, 'beaker.png', 'base64')
+  t.deepEqual(res.value, beakerPng.toString('base64'))
+
+  // ignores file as specified
+  // =
+
+  // create a new archive
+  var res = await app.client.executeAsync((done) => {
+    DatArchive.create().then(done,done)
+  })
+  var archiveURL = res.value.url
+  t.truthy(archiveURL)
+
+  // export files
+  var res = await app.client.executeAsync((src, dst, done) => {
+    DatArchive.exportToArchive({src, dst, ignore:['**/*.txt'], skipUndownloadedFiles: false}).then(done,done)
+  }, testStaticDatURL, archiveURL)
+
+  // test files
+  var res = await readFile(archiveURL, 'hello.txt')
+  t.deepEqual(res.value.name, 'NotFoundError')
+  var res = await readFile(archiveURL, 'subdir/hello.txt')
+  t.deepEqual(res.value.name, 'NotFoundError')
+  var res = await readFile(archiveURL, 'beaker.png', 'base64')
+  t.deepEqual(res.value, beakerPng.toString('base64'))
 })
