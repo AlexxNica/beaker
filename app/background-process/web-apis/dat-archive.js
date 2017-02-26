@@ -1,6 +1,7 @@
 import path from 'path'
 import {parse as parseURL} from 'url'
 import pda from 'pauls-dat-api'
+const datDns = require('dat-dns')()
 import * as datLibrary from '../networks/dat/library'
 import * as archivesDb from '../dbs/archives'
 import * as sitedataDb from '../dbs/sitedata'
@@ -181,6 +182,10 @@ export default {
       ignore: opts.ignore,
       skipUndownloadedFiles: opts.skipUndownloadedFiles === false ? false : true
     })
+  },
+
+  async resolveName(name) {
+    return datDns.resolveName(name)
   }
 }
 

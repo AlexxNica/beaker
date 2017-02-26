@@ -106,6 +106,10 @@ export default class DatArchive {
   static exportToArchive(opts={}) {
     return dat.exportToArchive(opts)
   }
+
+  static resolveName(name) {
+    return dat.resolveName(name)
+  }
 }
 
 function joinPath (url, path) {
