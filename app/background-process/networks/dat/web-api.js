@@ -70,6 +70,8 @@ export default {
 
   async updateManifest(url, manifest) {
     var { archive, filepath } = lookupArchive(url)
+    var senderOrigin = archivesDb.extractOrigin(this.sender.getURL())
+    await assertWritePermission(archive, this.sender)
     return pda.updateManifest(archive, manifest)
   },
 
@@ -131,12 +133,14 @@ export default {
     throw new Error('not yet implemented') // TODO
   },
 
-  createFileActivityStream(opts) {
-    throw new Error('not yet implemented') // TODO
+  createFileActivityStream(url, pathPattern) {
+    var { archive } = lookupArchive(url)
+    return pda.createFileActivityStream(archive, pathPattern)
   },
 
-  createNetworkActivityStream(opts) {
-    throw new Error('not yet implemented') // TODO
+  createNetworkActivityStream(url) {
+    var { archive } = lookupArchive(url)
+    return pda.createNetworkActivityStream(archive)
   },
 
   async importFromFilesystem(opts) {

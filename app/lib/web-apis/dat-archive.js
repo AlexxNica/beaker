@@ -67,7 +67,7 @@ export default class DatArchive {
     return dat.deleteFile(url)
   }
 
-  download(path, opts) {
+  download(path='/', opts={}) {
     const url = joinPath(this.url, path)
     return dat.download(url, opts)
   }
@@ -87,13 +87,13 @@ export default class DatArchive {
     return dat.deleteDirectory(url)
   }
 
-  // createFileActivityStream(opts) {
-  //   // TODO
-  // }
+  createFileActivityStream(pathSpec=null) {
+    return dat.createFileActivityStream(this.url, pathSpec)
+  }
 
-  // createNetworkActivityStream(opts) {
-  //   // TODO
-  // }
+  createNetworkActivityStream(opts) {
+    return dat.createNetworkActivityStream(this.url)
+  }
 
   static importFromFilesystem(opts={}) {
     return dat.importFromFilesystem(opts)

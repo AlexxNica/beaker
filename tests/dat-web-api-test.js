@@ -63,6 +63,13 @@ async function readFile (url, path, opts) {
     archive.readFile(path, opts).then(done, done)
   }, url, path, opts)
 }
+async function writeFile (url, path, content, opts) {
+  return app.client.executeAsync((url, path, content, opts, done) => {
+    if (content.data) content = new Uint8Array(content.data) // spectron fucks up our data, unfuck it
+    var archive = new DatArchive(url)
+    archive.writeFile(path, content, opts).then(done, done)
+  }, url, path, content, opts)
+}
 
 // tests
 //
@@ -557,6 +564,7 @@ test('archive.updateManifest', async t => {
     var archive = new DatArchive(url)
     archive.updateManifest({title: 'New Title', description: 'New Description', trash: 'discarded'}).then(done, done)
   }, createdDatURL)
+  t.falsy(res.value)
 
   // check the dat.json
   var res = await app.client.executeAsync((url, done) => {
@@ -820,3 +828,89 @@ test('DatArchive.exportToArchive', async t => {
   var res = await readFile(archiveURL, 'beaker.png', 'base64')
   t.deepEqual(res.value, beakerPng.toString('base64'))
 })
+
+test('archive.createFileActivityStream', async t => {
+  // do this in the shell so we dont have to ask permission
+  await app.client.windowByIndex(0)
+
+  // create a new archive
+  var res = await app.client.executeAsync((done) => {
+    DatArchive.create().then(done,done)
+  })
+  var archiveURL = res.value.url
+  t.truthy(archiveURL)
+
+  // start the stream
+  app.client.execute(url => {
+    window.res = []
+    var archive = new DatArchive(url)
+    var stream = archive.createFileActivityStream()
+    stream.on('data', function (data) {
+      var event = data[0]
+      var args = data[1]
+      if (event === 'changed') {
+        window.res.push(args.path)
+      }
+    })
+  }, archiveURL)
+
+  // make changes
+  await writeFile(archiveURL, '/a.txt', 'one', 'utf8')
+  await writeFile(archiveURL, '/b.txt', 'one', 'utf8')
+  await writeFile(archiveURL, '/a.txt', 'one', 'utf8')
+  await writeFile(archiveURL, '/a.txt', 'two', 'utf8')
+  await writeFile(archiveURL, '/b.txt', 'two', 'utf8')
+  await writeFile(archiveURL, '/c.txt', 'one', 'utf8')
+
+  await app.client.waitUntil(() => app.client.execute(() => { return window.res.length == 6 }))
+  var res = await app.client.execute(() => { return window.res })
+  t.deepEqual(res.value, ['/a.txt', '/b.txt', '/a.txt', '/a.txt', '/b.txt', '/c.txt'])
+})
+
+test('archive.createNetworkActivityStream', async t => {
+  // do this in the shell so we dont have to ask permission
+  await app.client.windowByIndex(0)
+
+  // share the test static dat
+  var testStaticDat2 = await shareDat(__dirname + '/scaffold/test-static-dat')
+  var testStaticDat2URL = 'dat://' + testStaticDat2.archive.key.toString('hex')
+
+  // start the download & network stream
+  await app.client.execute(url => {
+    window.res = {
+      gotPeer: false,
+      metadata: {
+        down: 0,
+        all: false
+      },
+      content: {
+        down: 0,
+        all: false
+      }
+    }
+    var archive = new DatArchive(url)
+    var stream = archive.createNetworkActivityStream()
+    stream.on('data', function (data) {
+      var event = data[0]
+      var args = data[1]
+      if (event === 'network-changed') {
+        window.res.gotPeer = true
+      } else if (event === 'download') {
+        window.res[args.feed].down++
+      } else if (event === 'download-finished') {
+        window.res[args.feed].all = true
+      }
+    })
+    archive.download()
+  }, testStaticDat2URL)
+
+  await sleep(500) // couldnt get waitUntil to work, for some reason
+  var res = await app.client.execute(() => { return window.res })
+  t.deepEqual(res.value.gotPeer, true)
+  t.deepEqual(res.value.metadata.all, true)
+  t.deepEqual(res.value.content.all, true)
+})
+
+function sleep (time) {
+  return new Promise(resolve => setTimeout(resolve, time))
+}
