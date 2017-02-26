@@ -1,10 +1,10 @@
 import path from 'path'
 import {parse as parseURL} from 'url'
 import pda from 'pauls-dat-api'
-import * as datLibrary from './library'
-import * as archivesDb from '../../dbs/archives'
-import * as sitedataDb from '../../dbs/sitedata'
-import {queryPermission, requestPermission} from '../../ui/permissions'
+import * as datLibrary from '../networks/dat/library'
+import * as archivesDb from '../dbs/archives'
+import * as sitedataDb from '../dbs/sitedata'
+import {queryPermission, requestPermission} from '../ui/permissions'
 import { 
   DAT_HASH_REGEX,
   DAT_QUOTA_DEFAULT_BYTES_ALLOWED,
@@ -19,7 +19,7 @@ import {
   FileNotFoundError,
   ProtectedFileNotWritableError,
   InvalidPathError
-} from '../../../lib/const'
+} from '../../lib/const'
 
 const DEFAULT_TIMEOUT = 5e3
 

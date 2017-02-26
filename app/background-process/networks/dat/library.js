@@ -1,14 +1,11 @@
-import {shell} from 'electron'
 import emitStream from 'emit-stream'
 import EventEmitter from 'events'
-import pump from 'pump'
-import multicb from 'multicb'
 import datEncoding from 'dat-encoding'
 import pify from 'pify'
 import pda from 'pauls-dat-api'
 var debug = require('debug')('dat')
 import trackArchiveEvents from './track-archive-events'
-import {debounce, cbPromise} from '../../../lib/functions'
+import {debounce} from '../../../lib/functions'
 import {grantPermission} from '../../ui/permissions'
 
 // db modules
@@ -18,12 +15,10 @@ import hyperdrive from 'hyperdrive'
 // network modules
 import swarmDefaults from 'datland-swarm-defaults'
 import discoverySwarm from 'discovery-swarm'
-import hyperImport from 'hyperdrive-import-files'
 const datDns = require('dat-dns')()
 
 // file modules
 import path from 'path'
-import fs from 'fs'
 import raf from 'random-access-file'
 import mkdirp from 'mkdirp'
 import getFolderSize from 'get-folder-size'
@@ -42,20 +37,14 @@ import {
 // =
 
 var drive // hyperdrive instance
-var archives = {} // memory cache of archive objects. key -> archive
+var archives = {} // in-memory cache of archive objects. key -> archive
 var archivesByDiscoveryKey = {} // mirror of the above cache, but discoveryKey -> archive
 var archivesEvents = new EventEmitter()
 
 // temporary methods
 // =
 // TODO remove these
-export const resolveName = datDns.resolveName
 export const setArchiveUserSettings = archivesDb.setArchiveUserSettings
-export const getGlobalSetting = archivesDb.getGlobalSetting
-export const setGlobalSetting = archivesDb.setGlobalSetting
-export function archivesEventStream () {
-  return emitStream(archivesEvents)
-}
 
 // exported API
 // =
@@ -65,15 +54,19 @@ export function setup () {
 
   // wire up event handlers
   archivesDb.on('update:archive-user-settings', (key, settings) => {
-    archivesEvents.emit('update-user-settings', { key, isSaved: settings.isSaved })
+    archivesEvents.emit('update-user-settings', {key, isSaved: settings.isSaved})
     configureArchive(key, settings)
   })
 
   // load and configure all saved archives
-  archivesDb.queryArchiveUserSettings({ isSaved: true }).then(
+  archivesDb.queryArchiveUserSettings({isSaved: true}).then(
     archives => archives.forEach(a => configureArchive(a.key, a)),
     err => console.error('Failed to load networked archives', err)
   )
+}
+
+export function createEventStream () {
+  return emitStream(archivesEvents)
 }
 
 // archive creation
@@ -138,35 +131,6 @@ export async function forkArchive (srcArchiveUrl, manifest={}) {
 // archive management
 // =
 
-// load archive and set the swarming behaviors
-export function configureArchive (key, settings) {
-  var download = settings.isSaved
-  var upload = settings.isSaved
-  var archive = getOrLoadArchive(key, { noSwarm: true })
-  var wasUploading = (archive.userSettings && archive.userSettings.isSaved)
-  archive.userSettings = settings
-  archivesEvents.emit('update-archive', { key, isUploading: upload, isDownloading: download })
-
-  archive.open(() => {
-    if (!archive.isSwarming) {
-      // announce
-      joinSwarm(archive)
-    } else if (upload !== wasUploading) {
-      // reset the replication feeds
-      debug('Resetting the replication stream with %d peers', archive.metadata.peers.length)
-      archive.metadata.peers.forEach(({ stream }) => {
-        archive.unreplicate(stream)
-        // HACK
-        // some state needs to get reset, but we havent figured out what event to watch for
-        // so... wait 3 seconds
-        // https://github.com/beakerbrowser/beaker/issues/205
-        // -prf
-        setTimeout(() => archive.replicate({ stream, download: true, upload }), 3e3)
-      })
-    }
-  })
-}
-
 export function loadArchive (key, { noSwarm } = {}) {
   // validate key
   if (key && !Buffer.isBuffer(key)) {
@@ -219,12 +183,6 @@ export function getOrLoadArchive (key, opts) {
     return archive
   }
   return loadArchive(key, opts)
-}
-
-export function openInExplorer (key) {
-  var folderpath = archivesDb.getArchiveFilesPath(key)
-  debug('Opening in explorer:', folderpath)
-  shell.openExternal('file://' + folderpath)
 }
 
 // archive fetch/query
@@ -364,6 +322,35 @@ export function leaveSwarm (key, cb) {
 
 // internal methods
 // =
+
+// load archive and set the swarming behaviors
+function configureArchive (key, settings) {
+  var download = settings.isSaved
+  var upload = settings.isSaved
+  var archive = getOrLoadArchive(key, { noSwarm: true })
+  var wasUploading = (archive.userSettings && archive.userSettings.isSaved)
+  archive.userSettings = settings
+  archivesEvents.emit('update-archive', { key, isUploading: upload, isDownloading: download })
+
+  archive.open(() => {
+    if (!archive.isSwarming) {
+      // announce
+      joinSwarm(archive)
+    } else if (upload !== wasUploading) {
+      // reset the replication feeds
+      debug('Resetting the replication stream with %d peers', archive.metadata.peers.length)
+      archive.metadata.peers.forEach(({ stream }) => {
+        archive.unreplicate(stream)
+        // HACK
+        // some state needs to get reset, but we havent figured out what event to watch for
+        // so... wait 3 seconds
+        // https://github.com/beakerbrowser/beaker/issues/205
+        // -prf
+        setTimeout(() => archive.replicate({ stream, download: true, upload }), 3e3)
+      })
+    }
+  })
+}
 
 // read metadata for the archive, and store it in the meta db
 async function pullLatestArchiveMeta (archive) {

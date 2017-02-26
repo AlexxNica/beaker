@@ -5,21 +5,15 @@ import http from 'http'
 import crypto from 'crypto'
 import listenRandomPort from 'listen-random-port'
 var debug = require('debug')('dat')
-import rpc from 'pauls-electron-rpc'
 import pda from 'pauls-dat-api'
 const datDns = require('dat-dns')()
 
 import { ProtocolSetupError } from '../../lib/const'
-import datInternalAPIManifest from '../../lib/api-manifests/internal/dat-internal'
-import datExternalAPIManifest from '../../lib/api-manifests/external/dat'
-
 import * as datLibrary from '../networks/dat/library'
-import datWebAPI from '../networks/dat/web-api'
 import * as sitedataDb from '../dbs/sitedata'
 import directoryListingPage from '../networks/dat/directory-listing-page'
 import errorPage from '../../lib/error-page'
 import * as mime from '../../lib/mime'
-import { internalOnly } from '../../lib/bg/rpc'
 
 // constants
 // =
@@ -66,10 +60,6 @@ export function setup () {
 
   // setup the network & db
   datLibrary.setup()
-
-  // wire up RPC
-  rpc.exportAPI('datInternalAPI', datInternalAPIManifest, datLibrary, internalOnly)
-  rpc.exportAPI('dat', datExternalAPIManifest, datWebAPI)
 
   // setup the protocol handler
   protocol.registerHttpProtocol('dat',
