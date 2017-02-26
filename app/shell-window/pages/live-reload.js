@@ -5,9 +5,10 @@ import * as pages from '../pages'
 // =
 
 export function setup () {
+  // TODO
   // wire up events
-  var archivesEvents = emitStream(datInternalAPI.archivesEventStream())
-  archivesEvents.on('update-listing', onUpdateListing)
+  // var archivesEvents = emitStream(datInternalAPI.archivesEventStream())
+  // archivesEvents.on('update-listing', onUpdateListing)
 }
 
 // event handlers

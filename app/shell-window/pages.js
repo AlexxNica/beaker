@@ -542,7 +542,7 @@ function onDidStopLoading (e) {
       page.checkForDatAlternative(hostname)
     }
     if (protocol === 'dat:') {
-      datInternalAPI.getArchiveInfo(hostname).then(info => {
+      beaker.library.get(hostname).then(info => {
         page.siteInfo = info
         navbar.update(page)
       })
