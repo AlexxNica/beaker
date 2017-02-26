@@ -41,11 +41,6 @@ var archives = {} // in-memory cache of archive objects. key -> archive
 var archivesByDiscoveryKey = {} // mirror of the above cache, but discoveryKey -> archive
 var archivesEvents = new EventEmitter()
 
-// temporary methods
-// =
-// TODO remove these
-export const setArchiveUserSettings = archivesDb.setArchiveUserSettings
-
 // exported API
 // =
 
@@ -54,7 +49,14 @@ export function setup () {
 
   // wire up event handlers
   archivesDb.on('update:archive-user-settings', (key, settings) => {
-    archivesEvents.emit('update-user-settings', {key, isSaved: settings.isSaved})
+    // emit event
+    var event = {
+      url: 'dat://' + key,
+      isSaved: settings.isSaved
+    }
+    archivesEvents.emit(settings.isSaved ? 'added' : 'removed', event)
+
+    // respond to change internally
     configureArchive(key, settings)
   })
 
@@ -82,7 +84,10 @@ export async function createNewArchive (manifest) {
   await pda.writeManifest(archive, manifest)
 
   // write the user settings
-  await setArchiveUserSettings(key, { isSaved: true })
+  await archivesDb.setArchiveUserSettings(key, { isSaved: true })
+
+  // write the metadata
+  await pullLatestArchiveMeta(archive)
 
   // write the perms
   if (manifest.createdBy && manifest.createdBy.url) {
@@ -330,7 +335,6 @@ function configureArchive (key, settings) {
   var archive = getOrLoadArchive(key, { noSwarm: true })
   var wasUploading = (archive.userSettings && archive.userSettings.isSaved)
   archive.userSettings = settings
-  archivesEvents.emit('update-archive', { key, isUploading: upload, isDownloading: download })
 
   archive.open(() => {
     if (!archive.isSwarming) {
@@ -365,19 +369,19 @@ async function pullLatestArchiveMeta (archive) {
     pify(getFolderSize)(archivesDb.getArchiveFilesPath(archive))
   ])
   manifest = manifest || {}
-  var { title, description, author, version, forkOf, createdBy } = manifest
+  var { title, description, author, forkOf, createdBy } = manifest
   var mtime = Date.now() // use our local update time
   var isOwner = archive.owner
   size = size || 0
 
   // write the record
-  var update = { title, description, author, version, forkOf, createdBy, mtime, size, isOwner }
+  var update = { title, description, author, forkOf, createdBy, mtime, size, isOwner }
   debug('Writing meta', update)
   await archivesDb.setArchiveMeta(key, update)
 
   // emit the update event
-  update.key = key
-  archivesEvents.emit('update-archive', update)
+  update.url = 'dat://' + key
+  archivesEvents.emit('updated', update)
 }
 
 function fromURLToKey (url) {

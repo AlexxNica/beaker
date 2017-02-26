@@ -11,7 +11,6 @@ import { shareDat } from './lib/dat-helpers'
 const app = new Application({
   path: electron,
   args: ['../app'],
-  chromeDriverLogPath: 'dat-web-api-test.log',
   env: { 
     beaker_user_data_path: fs.mkdtempSync(os.tmpdir() + path.sep + 'beaker-test-'),
     beaker_dat_quota_default_bytes_allowed: 1024 * 10 // 10kb

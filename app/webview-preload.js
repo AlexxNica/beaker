@@ -16,7 +16,9 @@ webFrame.registerURLSchemeAsPrivileged('dat', { bypassCSP: false })
 
 // setup APIs
 importWebAPIs()
-window.DatArchive = DatArchive
-window.beaker = beaker
+if (['beaker:','dat:'].includes(window.location.protocol)) {
+  window.DatArchive = DatArchive
+  window.beaker = beaker
+}
 setupLocationbar()
 setupNavigatorPermissions()

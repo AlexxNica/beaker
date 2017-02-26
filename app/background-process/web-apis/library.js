@@ -1,7 +1,7 @@
 import {parse as parseURL} from 'url'
 import * as datLibrary from '../networks/dat/library'
 import * as archivesDb from '../dbs/archives'
-import {DAT_HASH_REGEX, InvalidURLError} from '../../lib/const'
+import {DAT_HASH_REGEX, PermissionsError, InvalidURLError} from '../../lib/const'
 
 // exported api
 // =
@@ -31,7 +31,11 @@ export default {
   },
 
   createEventStream() {
-    assertTmpBeakerOnly(this.sender)
+    try {
+      assertTmpBeakerOnly(this.sender)
+    } catch (e) {
+      return
+    }
     return datLibrary.createEventStream()
   }
 }
