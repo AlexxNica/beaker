@@ -219,7 +219,8 @@ test('DatArchive.create', async t => {
   // check the settings
   await app.client.windowByIndex(0)
   var details = await app.client.executeAsync((key, done) => {
-    datInternalAPI.getArchiveInfo(key).then(done, err => done({ err }))
+    var archive = new DatArchive(key)
+    archive.getInfo().then(done, err => done({ err }))
   }, createdDatKey)
   await app.client.windowByIndex(1)
   t.deepEqual(details.value.userSettings.isSaved, true)
@@ -439,10 +440,10 @@ test('archive.writeFile & archive.createDirectory doesnt allow writes to archive
 
   await app.client.windowByIndex(0)
   var res = await app.client.executeAsync((done) => {
-    datInternalAPI.createNewArchive({ title: 'Another Test Dat' }).then(done, done)
+    DatArchive.create({ title: 'Another Test Dat' }).then(done, done)
   })
   t.falsy(res.value.name, 'create didnt fail')
-  var newTestDatURL = res.value
+  var newTestDatURL = res.value.url
   await app.client.windowByIndex(1)
 
   // writefile deny
@@ -843,13 +844,9 @@ test('archive.createFileActivityStream', async t => {
   app.client.execute(url => {
     window.res = []
     var archive = new DatArchive(url)
-    var stream = archive.createFileActivityStream()
-    stream.on('data', function (data) {
-      var event = data[0]
-      var args = data[1]
-      if (event === 'changed') {
-        window.res.push(args.path)
-      }
+    var events = archive.createFileActivityStream()
+    events.addEventListener('changed', function ({path}) {
+      window.res.push(path)
     })
   }, archiveURL)
 
@@ -888,17 +885,15 @@ test('archive.createNetworkActivityStream', async t => {
       }
     }
     var archive = new DatArchive(url)
-    var stream = archive.createNetworkActivityStream()
-    stream.on('data', function (data) {
-      var event = data[0]
-      var args = data[1]
-      if (event === 'network-changed') {
-        window.res.gotPeer = true
-      } else if (event === 'download') {
-        window.res[args.feed].down++
-      } else if (event === 'download-finished') {
-        window.res[args.feed].all = true
-      }
+    var events = archive.createNetworkActivityStream()
+    events.addEventListener('network-changed', () => {
+      window.res.gotPeer = true
+    })
+    events.addEventListener('download', ({feed}) => {
+      window.res[feed].down++
+    })
+    events.addEventListener('download-finished', ({feed}) => {
+      window.res[feed].all = true
     })
     archive.download()
   }, testStaticDat2URL)

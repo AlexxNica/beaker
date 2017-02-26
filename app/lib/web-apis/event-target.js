@@ -40,3 +40,10 @@ export function bindEventStream (stream, target) {
     target.dispatchEvent(event)
   })
 }
+
+export function fromEventStream (stream) {
+  var target = new EventTarget()
+  bindEventStream(stream, target)
+  target.close = stream.close.bind(stream)
+  return target
+}

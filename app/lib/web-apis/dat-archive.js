@@ -2,6 +2,7 @@ import {ipcRenderer} from 'electron'
 import rpc from 'pauls-electron-rpc'
 import datArchiveManifest from '../api-manifests/external/dat-archive'
 import {DAT_URL_REGEX} from '../const'
+import {fromEventStream} from './event-target'
 
 // create the dat rpc api
 const dat = rpc.importAPI('dat-archive', datArchiveManifest, { timeout: false, noEval: true })
@@ -41,7 +42,7 @@ export default class DatArchive {
       .then(newUrl => new DatArchive(newUrl))
   }
 
-  getInfo(opts=null) {
+  getInfo(opts={}) {
     return dat.getInfo(this.url, opts)
   }
 
@@ -49,17 +50,17 @@ export default class DatArchive {
     return dat.updateManifest(this.url, manifest)
   }
 
-  stat(path, opts=null) {
+  stat(path, opts={}) {
     const url = joinPath(this.url, path)
     return dat.stat(url, opts)
   }
 
-  readFile(path, opts=null) {
+  readFile(path, opts={}) {
     const url = joinPath(this.url, path)
     return dat.readFile(url, opts)
   }
 
-  writeFile(path, data, opts=null) {
+  writeFile(path, data, opts={}) {
     const url = joinPath(this.url, path)
     return dat.writeFile(url, data, opts)
   }
@@ -90,11 +91,11 @@ export default class DatArchive {
   }
 
   createFileActivityStream(pathSpec=null) {
-    return dat.createFileActivityStream(this.url, pathSpec)
+    return fromEventStream(dat.createFileActivityStream(this.url, pathSpec))
   }
 
   createNetworkActivityStream(opts) {
-    return dat.createNetworkActivityStream(this.url)
+    return fromEventStream(dat.createNetworkActivityStream(this.url))
   }
 
   static importFromFilesystem(opts={}) {
