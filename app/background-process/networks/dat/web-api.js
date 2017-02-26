@@ -1,7 +1,7 @@
 import path from 'path'
 import {parse as parseURL} from 'url'
 import pda from 'pauls-dat-api'
-import * as dat from './dat'
+import * as datLibrary from './library'
 import * as archivesDb from '../../dbs/archives'
 import * as sitedataDb from '../../dbs/sitedata'
 import {queryPermission, requestPermission} from '../../ui/permissions'
@@ -38,7 +38,7 @@ export default {
     var createdBy = await getCreatedBy(this.sender)
 
     // create the archive
-    return dat.createNewArchive({title, description, createdBy})
+    return datLibrary.createNewArchive({title, description, createdBy})
   },
 
   async forkArchive(url, {title, description} = {}) {
@@ -53,19 +53,19 @@ export default {
     var createdBy = await getCreatedBy(this.sender)
 
     // create the archive
-    return dat.forkArchive(url, {title, description, createdBy})
+    return datLibrary.forkArchive(url, {title, description, createdBy})
   },
 
   async loadArchive(url) {
     if (!url || typeof url !== 'string') {
       return Promise.reject(new InvalidURLError())
     }
-    dat.getOrLoadArchive(url)
+    datLibrary.getOrLoadArchive(url)
     return Promise.resolve(true)
   },
 
   async getInfo(url, opts = {}) {
-    return dat.getArchiveInfo(url, opts)
+    return datLibrary.getArchiveInfo(url, opts)
   },
 
   async updateManifest(url, manifest) {
@@ -216,7 +216,7 @@ async function assertWritePermission (archive, sender) {
   if (allowed) return true
 
   // ask the user
-  var details = await dat.getArchiveInfo(archiveKey)
+  var details = await datLibrary.getArchiveInfo(archiveKey)
   allowed = await requestPermission(perm, sender, { title: details.title })
   if (!allowed) throw new UserDeniedError()
   return true
@@ -279,8 +279,8 @@ function lookupArchive (url) {
   }
 
   // lookup the archive
-  var archive = dat.getArchive(archiveKey)
-  if (!archive) archive = dat.loadArchive(new Buffer(archiveKey, 'hex'))
+  var archive = datLibrary.getArchive(archiveKey)
+  if (!archive) archive = datLibrary.loadArchive(new Buffer(archiveKey, 'hex'))
   return { archive, filepath }
 }
 

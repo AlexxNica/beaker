@@ -13,7 +13,7 @@ import { ProtocolSetupError } from '../../lib/const'
 import datInternalAPIManifest from '../../lib/api-manifests/internal/dat-internal'
 import datExternalAPIManifest from '../../lib/api-manifests/external/dat'
 
-import * as dat from '../networks/dat/dat'
+import * as datLibrary from '../networks/dat/library'
 import datWebAPI from '../networks/dat/web-api'
 import * as sitedataDb from '../dbs/sitedata'
 import directoryListingPage from '../networks/dat/directory-listing-page'
@@ -65,10 +65,10 @@ export function setup () {
   requestNonce = crypto.randomBytes(4).readUInt32LE(0)
 
   // setup the network & db
-  dat.setup()
+  datLibrary.setup()
 
   // wire up RPC
-  rpc.exportAPI('datInternalAPI', datInternalAPIManifest, dat, internalOnly)
+  rpc.exportAPI('datInternalAPI', datInternalAPIManifest, datLibrary, internalOnly)
   rpc.exportAPI('dat', datExternalAPIManifest, datWebAPI)
 
   // setup the protocol handler
@@ -144,7 +144,7 @@ function datServer (req, res) {
     if (err) return cb(404, 'No DNS record found for ' + urlp.host)
 
     // start searching the network
-    var archive = dat.getOrLoadArchive(archiveKey)
+    var archive = datLibrary.getOrLoadArchive(archiveKey)
 
     // declare a redirect helper
     var redirectToViewDat = once(hashOpt => {

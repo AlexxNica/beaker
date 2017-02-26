@@ -13,7 +13,7 @@ import { cbPromise } from '../../lib/functions'
 import { setupLevelDB, makeTxLock } from '../../lib/bg/db'
 import { transform, noopWritable } from '../../lib/streams'
 import { DAT_HASH_REGEX, InvalidOperationError, InvalidArchiveKeyError } from '../../lib/const'
-import { getOrLoadArchive } from '../networks/dat/dat'
+import { getOrLoadArchive } from '../networks/dat/library'
 
 // globals
 // =

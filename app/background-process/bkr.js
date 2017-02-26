@@ -4,7 +4,7 @@ import jayson from 'jayson/promise'
 import semver from 'semver'
 import { BrowserWindow } from 'electron'
 import { BKR_SERVER_PORT } from '../lib/const'
-import * as dat from './networks/dat/dat'
+import * as datLibrary from './networks/dat/library'
 import { getActiveWindow, createShellWindow } from './ui/windows'
 import { open as openUrl } from './open-url'
 var packageJson = require('./package.json')
@@ -41,7 +41,7 @@ export function setup () {
   // setup the methods
   var methods = {}
   DAT_METHODS.forEach(method => {
-    methods[method] = (args) => dat[method](...args).catch(massageError)
+    methods[method] = (args) => datLibrary[method](...args).catch(massageError)
   })
 
   // add hello handshake
@@ -69,7 +69,7 @@ export function setup () {
 
   // add method to make sure a dat is active
   methods.loadDat = ([key]) => {
-    dat.getOrLoadArchive(key)
+    datLibrary.getOrLoadArchive(key)
     return Promise.resolve()
   }
 
