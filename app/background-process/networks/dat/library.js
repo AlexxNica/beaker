@@ -4,7 +4,6 @@ import datEncoding from 'dat-encoding'
 import pify from 'pify'
 import pda from 'pauls-dat-api'
 var debug = require('debug')('dat')
-import trackArchiveEvents from './track-archive-events'
 import {debounce} from '../../../lib/functions'
 import {grantPermission} from '../../ui/permissions'
 
@@ -163,7 +162,7 @@ export function loadArchive (key, { noSwarm } = {}) {
 
   // wire up events
   archive.pullLatestArchiveMeta = debounce(() => pullLatestArchiveMeta(archive), 1e3)
-  trackArchiveEvents(archivesEvents, archive)
+  archive.metadata.on('download-finished', () => archive.pullLatestArchiveMeta())
 
   return archive
 }
@@ -217,7 +216,7 @@ export async function getArchiveInfo (key, opts = {}) {
     archivesDb.getArchiveMeta(key),
     archivesDb.getArchiveUserSettings(key)
   ])
-  meta.userSettings = userSettings
+  meta.userSettings = { isSaved: userSettings.isSaved }
   meta.peers = archive.metadata.peers.length
 
   // optional data
