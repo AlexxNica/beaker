@@ -12,11 +12,13 @@ export default class DatArchive {
     if (!url || typeof url !== 'string') {
       throw new Error('Invalid dat:// URL')
     }
-    var key = DAT_URL_REGEX.exec(url)
-    if (!key[1]) {
-      throw new Error('Invalid dat:// URL')
+
+    // parse the URL
+    var urlParsed = new URL(url.startsWith('dat://') ? url : `dat://${url}`)
+    if (urlParsed.protocol !== 'dat:') {
+      throw new Error('Invalid URL: must be a dat:// URL')
     }
-    url = 'dat://' + key[1]
+    url = 'dat://' + urlParsed.hostname
 
     // load into the 'active' (in-memory) cache
     dat.loadArchive(url)
@@ -72,7 +74,7 @@ export default class DatArchive {
     return dat.download(url, opts)
   }
 
-  listFiles(path, opts) {
+  listFiles(path='/', opts) {
     const url = joinPath(this.url, path)
     return dat.listFiles(url, opts)
   }

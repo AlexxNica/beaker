@@ -388,7 +388,8 @@ function fromURLToKey (url) {
     return url
   }
   if (url.startsWith('dat://')) {
-    url = DAT_URL_REGEX.exec(url)[1]
+    var match = DAT_URL_REGEX.exec(url)
+    if (match) return match[1]
   }
   return url
 }
