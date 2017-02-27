@@ -44,6 +44,9 @@ export function bindEventStream (stream, target) {
 export function fromEventStream (stream) {
   var target = new EventTarget()
   bindEventStream(stream, target)
-  target.close = stream.close.bind(stream)
+  target.close = () => {
+    target.listeners = {}
+    stream.close()
+  }
   return target
 }
