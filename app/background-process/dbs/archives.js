@@ -9,10 +9,11 @@ import concat from 'concat-stream'
 import pump from 'pump'
 import Events from 'events'
 import datEncoding from 'dat-encoding'
+import {InvalidArchiveKeyError} from 'beaker-error-constants'
 import { cbPromise } from '../../lib/functions'
 import { setupLevelDB, makeTxLock } from '../../lib/bg/db'
 import { transform, noopWritable } from '../../lib/streams'
-import { DAT_HASH_REGEX, InvalidOperationError, InvalidArchiveKeyError } from '../../lib/const'
+import { DAT_HASH_REGEX } from '../../lib/const'
 import { getOrLoadArchive } from '../networks/dat/library'
 
 // globals

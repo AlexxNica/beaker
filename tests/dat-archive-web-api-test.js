@@ -141,7 +141,7 @@ test('archive.stat', async t => {
 
   // stat non-existent file
   var entry = await stat(testStaticDatURL, 'notfound', {})
-  t.deepEqual(entry.value.name, 'FileNotFoundError')
+  t.deepEqual(entry.value.name, 'NotFoundError')
 
   // stat alt-formed path
   var entry = await stat(testStaticDatURL, '/hello.txt', {})

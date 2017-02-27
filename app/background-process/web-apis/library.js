@@ -1,7 +1,8 @@
 import {parse as parseURL} from 'url'
 import * as datLibrary from '../networks/dat/library'
 import * as archivesDb from '../dbs/archives'
-import {DAT_HASH_REGEX, PermissionsError, InvalidURLError} from '../../lib/const'
+import {DAT_HASH_REGEX} from '../../lib/const'
+import {PermissionsError, InvalidURLError} from 'beaker-error-constants'
 
 // exported api
 // =

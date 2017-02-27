@@ -8,7 +8,7 @@ var debug = require('debug')('dat')
 import pda from 'pauls-dat-api'
 const datDns = require('dat-dns')()
 
-import { ProtocolSetupError } from '../../lib/const'
+import {ProtocolSetupError} from 'beaker-error-constants'
 import * as datLibrary from '../networks/dat/library'
 import * as sitedataDb from '../dbs/sitedata'
 import directoryListingPage from '../networks/dat/directory-listing-page'

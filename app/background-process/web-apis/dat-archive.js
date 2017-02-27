@@ -10,17 +10,17 @@ import {
   DAT_HASH_REGEX,
   DAT_QUOTA_DEFAULT_BYTES_ALLOWED,
   DAT_VALID_PATH_REGEX,
-
+} from '../../lib/const'
+import {
   PermissionsError,
   UserDeniedError,
   QuotaExceededError,
   ArchiveNotWritableError,
-  ArchiveNotSavedError,
   InvalidURLError,
-  FileNotFoundError,
+  NotFoundError,
   ProtectedFileNotWritableError,
   InvalidPathError
-} from '../../lib/const'
+} from 'beaker-error-constants'
 
 const DEFAULT_TIMEOUT = 5e3
 
@@ -81,7 +81,7 @@ export default {
     var downloadedBlocks = opts.downloadedBlocks === true
     var entry = await pda.lookupEntry(archive, filepath, opts)
     if (!entry) {
-      throw new FileNotFoundError()
+      throw new NotFoundError()
     }
     if (downloadedBlocks) {
       entry.downloadedBlocks = archive.countDownloadedBlocks(entry)

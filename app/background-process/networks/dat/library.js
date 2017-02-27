@@ -28,9 +28,9 @@ import getFolderSize from 'get-folder-size'
 import {
   DAT_MANIFEST_FILENAME,
   DAT_HASH_REGEX,
-  DAT_URL_REGEX,
-  InvalidURLError
+  DAT_URL_REGEX
 } from '../../../lib/const'
+import {InvalidURLError} from 'beaker-error-constants'
 
 // globals
 // =
